@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <WiFi.h>
 #include <time.h>
+#include <Preferences.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 
@@ -24,13 +25,28 @@ const uint16_t server_port = 5000;
 
 WiFiClient client;
 Adafruit_BME280 bme;
+Preferences prefs;
+
+#define QUEUE_SIZE 1000
+struct Sample {
+  long  ts;
+  float t;
+  float p;
+  float u;
+  float a;
+};
 
 /* ------ PROTÓTIPOS ------ */
 void readSensorData();
 void connectWiFi();
 void setupTime();
 long getTimestamp();
-void sendDataTCP(float t, float p, float u, float a);
+bool sendWithAck(long ts, float t, float p, float u, float a);
+void initQueue();
+bool enqueue(Sample &s);
+bool peek(Sample &s);
+void dequeue();
+void processQueue();
 
 void setup() 
 {
@@ -61,6 +77,7 @@ void setup()
     Adafruit_BME280::STANDBY_MS_500
   );
 
+  initQueue();
   connectWiFi();
   setupTime();
 }
@@ -72,32 +89,32 @@ void loop()
     Serial.println("USB desconectado - baixo consumo");
     digitalWrite(IO_WAKEUP, LOW);
     readSensorData();
-    delay(20000);
+    while (true) {
+      Serial.println("Cochilando...");
+      delay(1000);
+    }
   }
   else
   {
-    Serial.println("USB conectado");
+    Serial.println("USB conectado - LOG mode");
     digitalWrite(IO_WAKEUP, HIGH);
     readSensorData();
-    delay(1000);
+    delay(5000);
   }
 }
 
 /* ------ LEITURA + ENVIO ------ */
 void readSensorData()
 {
-  float temperatura = bme.readTemperature();
-  float pressao     = bme.readPressure() / 100.0F;
-  float umidade     = bme.readHumidity();
-  float altitude    = bme.readAltitude(1013.25);
+  Sample s;
+  s.ts = getTimestamp();
+  s.t  = bme.readTemperature();
+  s.p  = bme.readPressure() / 100.0F;
+  s.u  = bme.readHumidity();
+  s.a  = bme.readAltitude(1013.25);
 
-  // Serial.println("=== BME280 ===");
-  // Serial.printf("T: %.2f °C\n", temperatura);
-  // Serial.printf("P: %.2f hPa\n", pressao);
-  // Serial.printf("U: %.2f %%\n", umidade);
-  // Serial.printf("A: %.2f m\n", altitude);
-
-  sendDataTCP(temperatura, pressao, umidade, altitude);
+  enqueue(s);      // nunca perde a leitura
+  processQueue();  // tenta enviar tudo que der
 }
 
 /* ------ WIFI ------ */
@@ -137,25 +154,22 @@ long getTimestamp()
   return now;
 }
 
-/* ------ TCP + JSON ------ */
-void sendDataTCP(float t, float p, float u, float a)
+bool sendWithAck(long ts, float t, float p, float u, float a)
 {
   if (!client.connected()) {
     Serial.println("Conectando ao servidor TCP...");
     if (!client.connect(server_ip, server_port)) {
       Serial.println("Falha ao conectar no servidor");
       digitalWrite(LED_SERV, LOW);
-      return;
+      return false;
     }
     Serial.println("Conectado ao servidor TCP!");
     digitalWrite(LED_SERV, HIGH);
   }
 
-  long timestamp = getTimestamp();
-
   String json =
     "{"
-    "\"timestamp\":"   + String(timestamp) + ","
+    "\"timestamp\":"   + String(ts) + ","
     "\"temperatura\":" + String(t, 2) + ","
     "\"pressao\":"     + String(p, 2) + ","
     "\"umidade\":"     + String(u, 2) + ","
@@ -163,6 +177,112 @@ void sendDataTCP(float t, float p, float u, float a)
     "}";
 
   client.println(json);
-  Serial.print("JSON enviado: ");
-  Serial.println(json);
+  Serial.println("Enviado: " + json);
+
+  unsigned long start = millis();
+  while (millis() - start < 2000) {
+    if (client.available()) {
+      String resp = client.readStringUntil('\n');
+      resp.trim();
+      if (resp == "OK") {
+        Serial.println("ACK recebido");
+        return true;
+      }
+    }
+  }
+
+  Serial.println("Timeout sem ACK");
+  return false;
+}
+
+void initQueue()
+{
+  prefs.begin("queue", false);
+
+  if (!prefs.isKey("head")) {
+    prefs.putUShort("head", 0);
+    prefs.putUShort("tail", 0);
+    prefs.putUShort("count", 0);
+  }
+
+  prefs.end();
+}
+
+bool enqueue(Sample &s)
+{
+  prefs.begin("queue", false);
+
+  uint16_t head  = prefs.getUShort("head", 0);
+  uint16_t tail  = prefs.getUShort("tail", 0);
+  uint16_t count = prefs.getUShort("count", 0);
+
+  if (count >= QUEUE_SIZE) {
+    prefs.end();
+    Serial.println("Buffer cheio! Amostra perdida.");
+    return false;
+  }
+
+  char key[10];
+  sprintf(key, "s%u", tail);
+  prefs.putBytes(key, &s, sizeof(Sample));
+
+  tail = (tail + 1) % QUEUE_SIZE;
+  count++;
+
+  prefs.putUShort("tail", tail);
+  prefs.putUShort("count", count);
+  prefs.end();
+
+  return true;
+}
+
+bool peek(Sample &s)
+{
+  prefs.begin("queue", true);
+
+  uint16_t count = prefs.getUShort("count", 0);
+  if (count == 0) {
+    prefs.end();
+    return false;
+  }
+
+  uint16_t head = prefs.getUShort("head", 0);
+  char key[10];
+  sprintf(key, "s%u", head);
+
+  prefs.getBytes(key, &s, sizeof(Sample));
+  prefs.end();
+  return true;
+}
+
+void dequeue()
+{
+  prefs.begin("queue", false);
+
+  uint16_t head  = prefs.getUShort("head", 0);
+  uint16_t count = prefs.getUShort("count", 0);
+
+  char key[10];
+  sprintf(key, "s%u", head);
+  prefs.remove(key);
+
+  head = (head + 1) % QUEUE_SIZE;
+  count--;
+
+  prefs.putUShort("head", head);
+  prefs.putUShort("count", count);
+  prefs.end();
+}
+
+void processQueue()
+{
+  Sample s;
+
+  while (peek(s)) {
+    if (sendWithAck(s.ts, s.t, s.p, s.u, s.a)) {
+      dequeue();   // sucesso → remove
+    } else {
+      break;       // falhou → tenta depois
+    }
+  }
 }

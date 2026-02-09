@@ -28,6 +28,7 @@ def handle_client(conn, addr):
                 try:
                     payload = json.loads(line)
                     print(f"[{addr}] {payload}")
+                    conn.sendall(b"OK\n")
                 except json.JSONDecodeError:
                     print(f"[{addr}] JSON inválido:", line)
 
