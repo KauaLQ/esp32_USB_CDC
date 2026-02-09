@@ -26,14 +26,13 @@ const uint16_t server_port = 5000;
 WiFiClient client;
 Adafruit_BME280 bme;
 Preferences prefs;
+String deviceMac;
 
 #define QUEUE_SIZE 1000
 struct Sample {
-  long  ts;
-  float t;
-  float p;
-  float u;
-  float a;
+  long    ts;
+  int16_t t;   // temperatura * 100
+  int16_t u;   // umidade * 100
 };
 
 /* ------ PROTÓTIPOS ------ */
@@ -41,7 +40,7 @@ void readSensorData();
 void connectWiFi();
 void setupTime();
 long getTimestamp();
-bool sendWithAck(long ts, float t, float p, float u, float a);
+bool sendWithAck(long ts, int16_t t, int16_t u);
 void initQueue();
 bool enqueue(Sample &s);
 bool peek(Sample &s);
@@ -108,10 +107,12 @@ void readSensorData()
 {
   Sample s;
   s.ts = getTimestamp();
-  s.t  = bme.readTemperature();
-  s.p  = bme.readPressure() / 100.0F;
-  s.u  = bme.readHumidity();
-  s.a  = bme.readAltitude(1013.25);
+
+  float temp = bme.readTemperature();
+  float umid = bme.readHumidity();
+
+  s.t = (int16_t)(temp * 100.0f);
+  s.u = (int16_t)(umid * 100.0f);
 
   enqueue(s);      // nunca perde a leitura
   processQueue();  // tenta enviar tudo que der
@@ -132,6 +133,8 @@ void connectWiFi()
   Serial.println("\nWi-Fi conectado!");
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
+  deviceMac = WiFi.macAddress();
+  Serial.println("MAC do dispositivo: " + deviceMac);
 }
 
 void setupTime()
@@ -154,7 +157,7 @@ long getTimestamp()
   return now;
 }
 
-bool sendWithAck(long ts, float t, float p, float u, float a)
+bool sendWithAck(long ts, int16_t t, int16_t u)
 {
   if (!client.connected()) {
     Serial.println("Conectando ao servidor TCP...");
@@ -169,11 +172,10 @@ bool sendWithAck(long ts, float t, float p, float u, float a)
 
   String json =
     "{"
-    "\"timestamp\":"   + String(ts) + ","
-    "\"temperatura\":" + String(t, 2) + ","
-    "\"pressao\":"     + String(p, 2) + ","
-    "\"umidade\":"     + String(u, 2) + ","
-    "\"altitude\":"    + String(a, 2) +
+    "\"mac\":\"" + deviceMac + "\","
+    "\"timestamp\":" + String(ts) + ","
+    "\"temperatura\":" + String(t) + ","
+    "\"umidade\":" + String(u) +
     "}";
 
   client.println(json);
@@ -279,10 +281,10 @@ void processQueue()
   Sample s;
 
   while (peek(s)) {
-    if (sendWithAck(s.ts, s.t, s.p, s.u, s.a)) {
-      dequeue();   // sucesso → remove
+    if (sendWithAck(s.ts, s.t, s.u)) {
+      dequeue();
     } else {
-      break;       // falhou → tenta depois
+      break;
     }
   }
 }
