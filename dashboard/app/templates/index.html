@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard IoT</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(90deg, #0F182C, #1C283C);
+            color: #fff;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: linear-gradient(90deg, #172236, #1B263A);
+            border: 1px solid #818181;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .card-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: transparent;
+        }
+
+        th, td {
+            font-size: small;
+            padding: 15px;
+            text-align: center;
+        }
+
+        th {
+            background-color: transparent;
+        }
+
+        td:nth-child(n+3) {
+            color: #0FC592;
+        }
+
+        tr{
+            border-bottom: 1px solid #818181;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Conan IoT Dashboard's</h1>
+
+<div id="tables"></div>
+
+<script>
+async function loadData() {
+    try {
+        const response = await fetch("/api/data");
+        const tables = await response.json();
+
+        const container = document.getElementById("tables");
+        container.innerHTML = "";
+
+        tables.forEach((devices, tableIndex) => {
+
+            // cálculo do range global (6 por tabela)
+            const start = tableIndex * 6 + 1;
+            const end = start + 5;
+
+            // card
+            const card = document.createElement("div");
+            card.className = "card";
+
+            // título
+            const title = document.createElement("div");
+            title.className = "card-title";
+            title.textContent = `DESCESP - ${String(start).padStart(2, "0")} à ${String(end).padStart(2, "0")}`;
+            card.appendChild(title);
+
+            // tabela
+            const table = document.createElement("table");
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>MAC</th>
+                        <th>Data/Hora</th>
+                        <th>Temperatura (°C)</th>
+                        <th>Umidade (%)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+
+            const tbody = table.querySelector("tbody");
+
+            // dispositivos reais
+            devices.forEach(d => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${d.mac}</td>
+                    <td>${d.datetime}</td>
+                    <td>${d.temperatura}</td>
+                    <td>${d.umidade}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // completa linhas vazias
+            for (let i = devices.length; i < 6; i++) {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>—</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>—</td>
+                `;
+                tbody.appendChild(row);
+            }
+
+            card.appendChild(table);
+            container.appendChild(card);
+        });
+
+    } catch (err) {
+        console.error("Erro ao carregar dados:", err);
+    }
+}
+
+// primeira carga
+loadData();
+
+// auto refresh
+setInterval(loadData, 5000);
+</script>
+
+</body>
+</html>

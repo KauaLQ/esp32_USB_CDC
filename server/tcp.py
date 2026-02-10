@@ -1,9 +1,13 @@
 import socket
 import threading
 import json
+from datetime import datetime
 
 HOST = '0.0.0.0'
 PORT = 5000
+OUTPUT_FILE = "server/dados.txt"
+
+file_lock = threading.Lock()  # garante escrita segura entre threads
 
 
 def handle_client(conn, addr):
@@ -16,7 +20,7 @@ def handle_client(conn, addr):
             if not data:
                 break
 
-            buffer += data.decode()
+            buffer += data.decode(errors="ignore")
 
             while "\n" in buffer:
                 line, buffer = buffer.split("\n", 1)
@@ -27,10 +31,40 @@ def handle_client(conn, addr):
 
                 try:
                     payload = json.loads(line)
-                    print(f"[{addr}] {payload}")
+
+                    # ===== PARSE DOS CAMPOS =====
+                    mac = payload["mac"]
+                    ts = int(payload["timestamp"])
+
+                    # valores vêm *100 do ESP
+                    temp = int(payload["temperatura"]) / 100.0
+                    umid = int(payload["umidade"]) / 100.0
+
+                    dt = datetime.fromtimestamp(ts).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+
+                    parsed = {
+                        "mac": mac,
+                        "timestamp": ts,
+                        "datetime": dt,
+                        "temperatura": round(temp, 2),
+                        "umidade": round(umid, 2)
+                    }
+
+                    print(f"[{addr}] {parsed}")
+
+                    # ===== PERSISTÊNCIA EM ARQUIVO =====
+                    with file_lock:
+                        with open(OUTPUT_FILE, "a", encoding="utf-8") as f:
+                            f.write(json.dumps(parsed) + "\n")
+
+                    # ===== ACK =====
                     conn.sendall(b"OK\n")
-                except json.JSONDecodeError:
-                    print(f"[{addr}] JSON inválido:", line)
+
+                except (json.JSONDecodeError, KeyError, ValueError) as e:
+                    print(f"[{addr}] Erro de parsing:", e)
+                    print("Linha:", line)
 
     except Exception as e:
         print(f"[{addr}] Erro:", e)

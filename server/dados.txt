@@ -1,0 +1,13 @@
+{"mac": "DC:B4:D9:06:0E:98", "timestamp": 1770728956, "datetime": "2026-02-10 10:09:16", "temperatura": 26.05, "umidade": 47.3}
+{"mac": "DC:B4:D9:06:0E:98", "timestamp": 1770729608, "datetime": "2026-02-10 10:20:08", "temperatura": 25.83, "umidade": 45.37}
+{"mac": "DC:B4:D9:06:0E:98", "timestamp": 1770729613, "datetime": "2026-02-10 10:20:13", "temperatura": 25.83, "umidade": 45.42}
+{"mac": "DC:B4:D9:06:0E:98", "timestamp": 1770729618, "datetime": "2026-02-10 10:20:18", "temperatura": 25.82, "umidade": 45.76}
+{"mac": "DC:B4:D9:06:0E:98", "timestamp": 1770729623, "datetime": "2026-02-10 10:20:23", "temperatura": 25.82, "umidade": 45.57}
+{"mac": "DC:B4:D9:06:0E:98", "timestamp": 1770729628, "datetime": "2026-02-10 10:20:28", "temperatura": 25.82, "umidade": 45.46}
+{"mac": "DC:B4:D9:06:0E:99", "timestamp": 1770729628, "datetime": "2026-02-10 10:20:28", "temperatura": 25.82, "umidade": 45.46}
+{"mac": "DC:B4:D9:06:0E:99", "timestamp": 1770729628, "datetime": "2026-02-10 10:20:28", "temperatura": 25.82, "umidade": 45.46}
+{"mac": "DC:B4:D9:06:0E:78", "timestamp": 1770729628, "datetime": "2026-02-10 10:20:28", "temperatura": 25.82, "umidade": 45.46}
+{"mac": "DC:B4:D9:06:0E:44", "timestamp": 1770729628, "datetime": "2026-02-10 10:20:28", "temperatura": 25.82, "umidade": 45.46}
+{"mac": "DC:B4:D9:06:0E:00", "timestamp": 1770729628, "datetime": "2026-02-10 10:20:28", "temperatura": 25.82, "umidade": 45.46}
+{"mac": "DC:B4:D9:06:0E:01", "timestamp": 1770729628, "datetime": "2026-02-10 10:20:28", "temperatura": 25.82, "umidade": 45.46}
+{"mac": "DC:B4:D9:06:0E:11", "timestamp": 1770729628, "datetime": "2026-02-10 10:20:28", "temperatura": 25.82, "umidade": 45.46}
