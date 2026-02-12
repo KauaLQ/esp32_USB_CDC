@@ -37,6 +37,7 @@ def handle_client(conn, addr):
                     ts = int(payload["timestamp"])
 
                     # valores vêm *100 do ESP
+                    tens = int(payload["tensao"]) / 100.0
                     temp = int(payload["temperatura"]) / 100.0
                     umid = int(payload["umidade"]) / 100.0
 
@@ -48,6 +49,7 @@ def handle_client(conn, addr):
                         "mac": mac,
                         "timestamp": ts,
                         "datetime": dt,
+                        "tensao": round(tens, 2),
                         "temperatura": round(temp, 2),
                         "umidade": round(umid, 2)
                     }

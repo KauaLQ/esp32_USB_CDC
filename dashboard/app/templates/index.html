@@ -6,17 +6,67 @@
 
     <style>
         body {
+            margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
             background: linear-gradient(90deg, #0F182C, #1C283C);
             color: #fff;
-            padding: 20px;
         }
 
         h1 {
             margin-bottom: 30px;
         }
 
+        #container-mynavbar{
+            background: linear-gradient(90deg, #172236, #1B263A);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            border-bottom: 1px solid #32425f;
+        }
+
+        #user_acount {
+            display: flex;
+            align-items: center;
+            text-align: left;
+            gap: 8px;
+        }
+
+        #crop_container {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid #4f46e5;
+        overflow: hidden; /* Isso impede que a imagem "saia" do quadrado */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        }
+
+        #crop_container .user-acount-avatar {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 40%; /*Move a imagem*/
+        transform: scale(2); /* Aqui você define o zoom (1.5 = 150%) */
+        }
+
+        #user_acount_infos {
+            display: flex;
+            flex-direction: column;
+            font-size: larger;
+        }
+
+        #container-main {
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: baseline;
+        }
+
         .card {
+            max-width: 600px;
             background: linear-gradient(90deg, #172236, #1B263A);
             border: 1px solid #818181;
             border-radius: 12px;
@@ -58,9 +108,25 @@
 </head>
 <body>
 
-<h1>Conan IoT Dashboard's</h1>
+<nav id="container-mynavbar">
+    <div id="user_acount">
+        <div id="crop_container">
+            <img src="static/conan_2.webp" className="user-acount-avatar" alt="Avatar" />
+        </div>
 
-<div id="tables"></div>
+        <div id="user_acount_infos">
+            <span className="item-acount-description">
+                <b>Monitor de Baterias</b>
+            </span>
+        </div>
+    </div>
+</nav>
+
+<main id="container-main">
+    <h1>Conan IoT Dashboard's</h1>
+
+    <div id="tables"></div>
+</main>
 
 <script>
 async function loadData() {
@@ -73,29 +139,26 @@ async function loadData() {
 
         tables.forEach((devices, tableIndex) => {
 
-            // cálculo do range global (6 por tabela)
             const start = tableIndex * 6 + 1;
             const end = start + 5;
 
-            // card
             const card = document.createElement("div");
             card.className = "card";
 
-            // título
             const title = document.createElement("div");
             title.className = "card-title";
             title.textContent = `DESCESP - ${String(start).padStart(2, "0")} à ${String(end).padStart(2, "0")}`;
             card.appendChild(title);
 
-            // tabela
             const table = document.createElement("table");
             table.innerHTML = `
                 <thead>
                     <tr>
-                        <th>MAC</th>
-                        <th>Data/Hora</th>
+                        <th>Indice</th>
+                        <th>Tensão (V)</th>
                         <th>Temperatura (°C)</th>
                         <th>Umidade (%)</th>
+                        <th>Data/Hora</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -104,21 +167,29 @@ async function loadData() {
             const tbody = table.querySelector("tbody");
 
             // dispositivos reais
-            devices.forEach(d => {
+            devices.forEach((d, i) => {
+
+                const globalIndex = tableIndex * 6 + i + 1;
+
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td>${d.mac}</td>
-                    <td>${d.datetime}</td>
-                    <td>${d.temperatura}</td>
-                    <td>${d.umidade}</td>
+                    <td>${globalIndex}</td>
+                    <td>${d.tensao ?? "—"}</td>
+                    <td>${d.temperatura ?? "—"}</td>
+                    <td>${d.umidade ?? "—"}</td>
+                    <td>${d.datetime ?? "—"}</td>
                 `;
                 tbody.appendChild(row);
             });
 
             // completa linhas vazias
             for (let i = devices.length; i < 6; i++) {
+
+                const globalIndex = tableIndex * 6 + i + 1;
+
                 const row = document.createElement("tr");
                 row.innerHTML = `
+                    <td>${globalIndex}</td>
                     <td>—</td>
                     <td>—</td>
                     <td>—</td>

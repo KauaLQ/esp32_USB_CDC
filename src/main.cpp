@@ -33,6 +33,7 @@ struct Sample {
   long    ts;
   int16_t t;   // temperatura * 100
   int16_t u;   // umidade * 100
+  int16_t v;   // tensão * 100
 };
 
 /* ------ PROTÓTIPOS ------ */
@@ -40,7 +41,7 @@ void readSensorData();
 void connectWiFi();
 void setupTime();
 long getTimestamp();
-bool sendWithAck(long ts, int16_t t, int16_t u);
+bool sendWithAck(long ts, int16_t t, int16_t u, int16_t v);
 void initQueue();
 bool enqueue(Sample &s);
 bool peek(Sample &s);
@@ -111,11 +112,18 @@ void readSensorData()
   float temp = bme.readTemperature();
   float umid = bme.readHumidity();
 
+  // ----- LEITURA ADC -----
+  int raw = analogRead(IO_ADC);
+
+  // Conversão básica 12 bits (0-4095) -> 0-3.3V
+  float tensao = (raw / 4095.0f) * 3.3f;
+
   s.t = (int16_t)(temp * 100.0f);
   s.u = (int16_t)(umid * 100.0f);
+  s.v = (int16_t)(tensao * 100.0f);
 
-  enqueue(s);      // nunca perde a leitura
-  processQueue();  // tenta enviar tudo que der
+  enqueue(s);
+  processQueue();
 }
 
 /* ------ WIFI ------ */
@@ -157,7 +165,7 @@ long getTimestamp()
   return now;
 }
 
-bool sendWithAck(long ts, int16_t t, int16_t u)
+bool sendWithAck(long ts, int16_t t, int16_t u, int16_t v)
 {
   if (!client.connected()) {
     Serial.println("Conectando ao servidor TCP...");
@@ -174,6 +182,7 @@ bool sendWithAck(long ts, int16_t t, int16_t u)
     "{"
     "\"mac\":\"" + deviceMac + "\","
     "\"timestamp\":" + String(ts) + ","
+    "\"tensao\":" + String(v) + ","
     "\"temperatura\":" + String(t) + ","
     "\"umidade\":" + String(u) +
     "}";
@@ -281,7 +290,7 @@ void processQueue()
   Sample s;
 
   while (peek(s)) {
-    if (sendWithAck(s.ts, s.t, s.u)) {
+    if (sendWithAck(s.ts, s.t, s.u, s.v)) {
       dequeue();
     } else {
       break;

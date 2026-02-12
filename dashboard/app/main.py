@@ -5,7 +5,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 import json
-from math import ceil
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR.parent.parent / "server" / "dados.txt"
@@ -29,7 +28,7 @@ def read_last_by_device():
         for line in f:
             try:
                 data = json.loads(line)
-                devices[data["mac"]] = data  # sobrescreve → fica a última
+                devices[data["mac"]] = data  # mantém apenas a última leitura
             except json.JSONDecodeError:
                 pass
 
@@ -40,9 +39,10 @@ def chunk_devices(devices, chunk_size=6):
     """
     Quebra dispositivos em blocos de 6
     """
-    device_list = list(devices.values())
-    chunks = []
+    # Ordena por MAC para manter ordem estável
+    device_list = sorted(devices.values(), key=lambda x: x["mac"])
 
+    chunks = []
     for i in range(0, len(device_list), chunk_size):
         chunks.append(device_list[i:i + chunk_size])
 
@@ -62,8 +62,11 @@ def api_data():
     devices = read_last_by_device()
     tables = chunk_devices(devices)
 
-    # garante pelo menos 1 tabela
     if not tables:
         tables = [[]]
+        
+    # for t in tables:
+    #     for ta in t:
+    #         print(ta)
 
     return JSONResponse(tables)
