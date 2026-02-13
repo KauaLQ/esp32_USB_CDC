@@ -14,39 +14,39 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app = FastAPI(title="Dashboard IoT")
 
 
-def read_last_by_device():
+def read_last_snapshot():
     """
-    Retorna um dict:
-    { mac: ultima_leitura }
+    Lê apenas a última linha do arquivo.
+    Cada linha é um array completo de devices.
     """
-    devices = {}
 
     if not DATA_FILE.exists():
-        return devices
+        return []
+
+    last_line = None
 
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         for line in f:
-            try:
-                data = json.loads(line)
-                devices[data["mac"]] = data  # mantém apenas a última leitura
-            except json.JSONDecodeError:
-                pass
+            if line.strip():
+                last_line = line.strip()
 
-    return devices
+    if not last_line:
+        return []
 
+    try:
+        data = json.loads(last_line)
 
-def chunk_devices(devices, chunk_size=6):
-    """
-    Quebra dispositivos em blocos de 6
-    """
-    # Ordena por MAC para manter ordem estável
-    device_list = sorted(devices.values(), key=lambda x: x["mac"])
+        # garante ordenação
+        for device in data:
+            device["Dados"] = sorted(
+                device.get("Dados", []),
+                key=lambda x: x.get("I", 0)
+            )
 
-    chunks = []
-    for i in range(0, len(device_list), chunk_size):
-        chunks.append(device_list[i:i + chunk_size])
+        return sorted(data, key=lambda x: x.get("ID", ""))
 
-    return chunks
+    except json.JSONDecodeError:
+        return []
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -59,14 +59,44 @@ def dashboard(request: Request):
 
 @app.get("/api/data")
 def api_data():
-    devices = read_last_by_device()
-    tables = chunk_devices(devices)
+    devices = read_last_snapshot()
+    return JSONResponse(devices)
 
-    if not tables:
-        tables = [[]]
-        
-    # for t in tables:
-    #     for ta in t:
-    #         print(ta)
+@app.get("/api/history/{device_id}/{start}/{end}")
+def get_history(device_id: str, start: int, end: int):
 
-    return JSONResponse(tables)
+    if not DATA_FILE.exists():
+        return JSONResponse({"timestamps": [], "canais": {}})
+
+    timestamps = []
+    canais = {str(i): [] for i in range(start, end + 1)}
+
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+
+            try:
+                snapshot = json.loads(line)
+
+                for device in snapshot:
+                    if device.get("ID") == device_id:
+
+                        dados = device.get("Dados", [])
+
+                        # pega timestamp do primeiro canal (todos têm o mesmo)
+                        if dados:
+                            timestamps.append(dados[0]["timestamp"])
+
+                        for d in dados:
+                            canal = d.get("I")
+                            if start <= canal <= end:
+                                canais[str(canal)].append(d.get("Tensao"))
+
+            except json.JSONDecodeError:
+                continue
+
+    return JSONResponse({
+        "timestamps": timestamps,
+        "canais": canais
+    })

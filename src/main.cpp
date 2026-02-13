@@ -99,7 +99,7 @@ void loop()
     Serial.println("USB conectado - LOG mode");
     digitalWrite(IO_WAKEUP, HIGH);
     readSensorData();
-    delay(5000);
+    delay(30000);
   }
 }
 

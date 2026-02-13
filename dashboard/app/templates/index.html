@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard IoT</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
@@ -132,79 +133,171 @@
 async function loadData() {
     try {
         const response = await fetch("/api/data");
-        const tables = await response.json();
+        const devices = await response.json();
 
         const container = document.getElementById("tables");
         container.innerHTML = "";
 
-        tables.forEach((devices, tableIndex) => {
+        devices.forEach((device) => {
 
-            const start = tableIndex * 6 + 1;
-            const end = start + 5;
+            const dados = device.Dados || [];
 
-            const card = document.createElement("div");
-            card.className = "card";
+            // Ordena por canal (garante ordem correta)
+            dados.sort((a, b) => a.I - b.I);
 
-            const title = document.createElement("div");
-            title.className = "card-title";
-            title.textContent = `DESCESP - ${String(start).padStart(2, "0")} à ${String(end).padStart(2, "0")}`;
-            card.appendChild(title);
+            // Divide em dois blocos
+            const grupos = [
+                dados.filter(d => d.I >= 1 && d.I <= 6),
+                dados.filter(d => d.I >= 7 && d.I <= 12)
+            ];
 
-            const table = document.createElement("table");
-            table.innerHTML = `
-                <thead>
-                    <tr>
-                        <th>Indice</th>
-                        <th>Tensão (V)</th>
-                        <th>Temperatura (°C)</th>
-                        <th>Umidade (%)</th>
-                        <th>Data/Hora</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            `;
+            grupos.forEach((grupo, indexGrupo) => {
 
-            const tbody = table.querySelector("tbody");
+                const card = document.createElement("div");
+                card.className = "card";
 
-            // dispositivos reais
-            devices.forEach((d, i) => {
+                const inicio = indexGrupo === 0 ? 1 : 7;
+                const fim = indexGrupo === 0 ? 6 : 12;
 
-                const globalIndex = tableIndex * 6 + i + 1;
+                card.style.cursor = "pointer";
+                card.addEventListener("click", () => {
+                    abrirGrafico(device.ID, inicio, fim);
+                });
 
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${globalIndex}</td>
-                    <td>${d.tensao ?? "—"}</td>
-                    <td>${d.temperatura ?? "—"}</td>
-                    <td>${d.umidade ?? "—"}</td>
-                    <td>${d.datetime ?? "—"}</td>
+                const title = document.createElement("div");
+                title.className = "card-title";
+                title.textContent = `DESCESP ${device.ID} - ${String(inicio).padStart(2,"0")} à ${String(fim).padStart(2,"0")}`;
+                card.appendChild(title);
+
+                const table = document.createElement("table");
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Canal</th>
+                            <th>Tensão (V)</th>
+                            <th>Temperatura (°C)</th>
+                            <th>Umidade (%)</th>
+                            <th>Data/Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
                 `;
-                tbody.appendChild(row);
+
+                const tbody = table.querySelector("tbody");
+
+                // adiciona os canais existentes
+                grupo.forEach((d) => {
+
+                    const dataFormatada = new Date(d.timestamp * 1000)
+                        .toLocaleString("pt-BR");
+
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${d.I}</td>
+                        <td>${d.Tensao ?? "—"}</td>
+                        <td>${d.Temp ?? "—"}</td>
+                        <td>${d.Umi ?? "—"}</td>
+                        <td>${dataFormatada}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // completa canais ausentes até 6 linhas
+                for (let i = grupo.length; i < 6; i++) {
+
+                    const canal = inicio + i;
+
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${canal}</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>—</td>
+                    `;
+                    tbody.appendChild(row);
+                }
+
+                card.appendChild(table);
+                container.appendChild(card);
             });
-
-            // completa linhas vazias
-            for (let i = devices.length; i < 6; i++) {
-
-                const globalIndex = tableIndex * 6 + i + 1;
-
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${globalIndex}</td>
-                    <td>—</td>
-                    <td>—</td>
-                    <td>—</td>
-                    <td>—</td>
-                `;
-                tbody.appendChild(row);
-            }
-
-            card.appendChild(table);
-            container.appendChild(card);
         });
 
     } catch (err) {
         console.error("Erro ao carregar dados:", err);
     }
+}
+
+let chartInstance = null;
+
+async function abrirGrafico(deviceId, inicio, fim) {
+
+    const response = await fetch(`/api/history/${deviceId}/${inicio}/${fim}`);
+    const data = await response.json();
+
+    const modal = document.createElement("div");
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100%";
+    modal.style.height = "100%";
+    modal.style.background = "rgba(0,0,0,0.8)";
+    modal.style.display = "flex";
+    modal.style.alignItems = "center";
+    modal.style.justifyContent = "center";
+
+    const canvas = document.createElement("canvas");
+    canvas.style.background = "linear-gradient(90deg, #172236, #1B263A)";
+    canvas.style.border = "1px solid #818181";
+    canvas.style.borderRadius = "12px";
+    canvas.style.padding = "20px";
+    canvas.width = 900;
+    canvas.height = 500;
+
+    modal.appendChild(canvas);
+    document.body.appendChild(modal);
+
+    modal.addEventListener("click", () => {
+        modal.remove();
+        if (chartInstance) chartInstance.destroy();
+    });
+
+    const ctx = canvas.getContext("2d");
+
+    const datasets = [];
+
+    Object.keys(data.canais).forEach(canal => {
+        datasets.push({
+            label: "Canal " + canal,
+            data: data.canais[canal],
+            borderWidth: 2,
+            fill: false
+        });
+    });
+
+    chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: data.timestamps.map(t =>
+                new Date(t * 1000).toLocaleTimeString("pt-BR")
+            ),
+            datasets: datasets
+        },
+        options: {
+            responsive: false,
+            plugins: {
+                legend: { position: "top" }
+            },
+            scales: {
+                y: {
+                    title: {
+                        display: true,
+                        text: "Tensão (V)"
+                    }
+                }
+            }
+        }
+    });
 }
 
 // primeira carga
