@@ -1,18 +1,23 @@
 # uvicorn app.main:app --host 0.0.0.0 --port 8000
+# python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import json
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR.parent.parent / "server" / "dados.txt"
 
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
 app = FastAPI(title="Dashboard IoT")
 
+# 2. ADICIONE ESTA LINHA:
+# Ela mapeia a URL "/static" para a pasta física "app/templates/static"
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "templates" / "static")), name="static")
+
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 def read_last_snapshot():
     """

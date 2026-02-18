@@ -35,22 +35,20 @@
         }
 
         #crop_container {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        border: 2px solid #4f46e5;
-        overflow: hidden; /* Isso impede que a imagem "saia" do quadrado */
-        display: flex;
-        align-items: center;
-        justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid #4f46e5;
+            overflow: hidden; /* Isso impede que a imagem "saia" do quadrado */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #crop_container .user-acount-avatar {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        object-position: 40%; /*Move a imagem*/
-        transform: scale(2); /* Aqui você define o zoom (1.5 = 150%) */
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         #user_acount_infos {
@@ -69,11 +67,21 @@
         .card {
             max-width: 600px;
             background: linear-gradient(90deg, #172236, #1B263A);
-            border: 1px solid #818181;
+            border: 1px solid #32425f;
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 40px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease; 
+        }
+
+        .card:hover {
+            transform: translateY(-5px) scale(1.02); /* Leve subida e zoom */
+            box-shadow: 0 12px 25px rgba(0,0,0,0.5);
+        }
+
+        .card:active {
+            transform: scale(0.98);
         }
 
         .card-title {
@@ -105,6 +113,82 @@
         tr{
             border-bottom: 1px solid #818181;
         }
+
+        /* Estilos do Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: linear-gradient(90deg, #172236, #1B263A);
+            border: 1px solid #818181;
+            border-radius: 12px;
+            padding: 50px;
+            position: relative;
+            width: 90%;            /* Ocupa 90% da tela em dispositivos menores */
+            max-width: 800px;     /* Não passa de 1000px em telas grandes */
+            height: 400px;         /* Altura fixa para o gráfico respirar */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transform: scale(0.8);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Quando o pai (overlay) estiver ativo, o conteúdo volta ao tamanho normal */
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-title{
+            align-self: baseline;
+            justify-self: flex-start;
+        }
+
+        .modal-subtitle {
+            font-size: 12px;
+            color: #8e96a5;
+            margin: 10px 0px 10px 0px;
+            align-self: baseline;
+            justify-self: flex-start;
+        }
+
+        #chartCanvas {
+            width: 100% !important;  /* Força ocupar toda a largura do modal-content */
+            height: 100% !important; /* Força ocupar toda a altura do modal-content */
+        }
+
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: red;
+        }
+
+        .close-button:hover {
+            transition: color 0.2s;
+            color: darkred;
+        }
     </style>
 </head>
 <body>
@@ -112,7 +196,7 @@
 <nav id="container-mynavbar">
     <div id="user_acount">
         <div id="crop_container">
-            <img src="static/conan_2.webp" className="user-acount-avatar" alt="Avatar" />
+            <img src="{{ url_for('static', path='conan_logo.jpg') }}" class="user-acount-avatar" alt="Avatar">
         </div>
 
         <div id="user_acount_infos">
@@ -127,6 +211,15 @@
     <h1>Conan IoT Dashboard's</h1>
 
     <div id="tables"></div>
+
+    <div id="chartModal" class="modal-overlay">
+    <div class="modal-content">
+        <span class="modal-title">Gráfico de Tensões ao longo do tempo</span>
+        <span class="modal-subtitle">Clique nos canais abaixo para mostrar/ocultar</span>
+        <span class="close-button">&times;</span>
+        <canvas id="chartCanvas"></canvas>
+    </div>
+</div>
 </main>
 
 <script>
@@ -228,76 +321,81 @@ async function loadData() {
     }
 }
 
+// Variáveis globais para controlar o modal
+const modal = document.getElementById("chartModal");
+const canvas = document.getElementById("chartCanvas");
+const ctx = canvas.getContext("2d");
 let chartInstance = null;
 
+// Lógica para fechar o modal ao clicar fora ou no X
+modal.addEventListener("click", (e) => {
+    if (e.target === modal || e.target.classList.contains('close-button')) {
+        // modal.style.display = "none"; <-- Remova essa linha
+        modal.classList.remove("active"); // Adicione essa
+        
+        if (chartInstance) {
+            // Pequeno delay para destruir o gráfico após a animação de saída terminar
+            setTimeout(() => {
+                chartInstance.destroy();
+                chartInstance = null;
+            }, 400); 
+        }
+    }
+});
+
 async function abrirGrafico(deviceId, inicio, fim) {
+    try {
+        const response = await fetch(`/api/history/${deviceId}/${inicio}/${fim}`);
+        const data = await response.json();
 
-    const response = await fetch(`/api/history/${deviceId}/${inicio}/${fim}`);
-    const data = await response.json();
+        // Mostra o modal
+        modal.classList.add("active");
 
-    const modal = document.createElement("div");
-    modal.style.position = "fixed";
-    modal.style.top = "0";
-    modal.style.left = "0";
-    modal.style.width = "100%";
-    modal.style.height = "100%";
-    modal.style.background = "rgba(0,0,0,0.8)";
-    modal.style.display = "flex";
-    modal.style.alignItems = "center";
-    modal.style.justifyContent = "center";
-
-    const canvas = document.createElement("canvas");
-    canvas.style.background = "linear-gradient(90deg, #172236, #1B263A)";
-    canvas.style.border = "1px solid #818181";
-    canvas.style.borderRadius = "12px";
-    canvas.style.padding = "20px";
-    canvas.width = 900;
-    canvas.height = 500;
-
-    modal.appendChild(canvas);
-    document.body.appendChild(modal);
-
-    modal.addEventListener("click", () => {
-        modal.remove();
+        // Se já houver um gráfico, destrói antes de criar o novo
         if (chartInstance) chartInstance.destroy();
-    });
 
-    const ctx = canvas.getContext("2d");
-
-    const datasets = [];
-
-    Object.keys(data.canais).forEach(canal => {
-        datasets.push({
+        const datasets = Object.keys(data.canais).map(canal => ({
             label: "Canal " + canal,
             data: data.canais[canal],
             borderWidth: 2,
-            fill: false
-        });
-    });
+            fill: false,
+            borderColor: getRandomColor() // Opcional: função para cores diferentes
+        }));
 
-    chartInstance = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: data.timestamps.map(t =>
-                new Date(t * 1000).toLocaleTimeString("pt-BR")
-            ),
-            datasets: datasets
-        },
-        options: {
-            responsive: false,
-            plugins: {
-                legend: { position: "top" }
+        chartInstance = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: data.timestamps.map(t =>
+                    new Date(t * 1000).toLocaleTimeString("pt-BR")
+                ),
+                datasets: datasets
             },
-            scales: {
-                y: {
-                    title: {
-                        display: true,
-                        text: "Tensão (V)"
-                    }
+            options: {
+                responsive: true, // Mudei para true para melhor ajuste
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "top", labels: { color: '#fff' } }
+                },
+                scales: {
+                    y: {
+                        ticks: { color: '#fff' },
+                        title: { display: true, text: "Tensão (V)", color: '#fff' }
+                    },
+                    x: { ticks: { color: '#fff' } }
                 }
             }
-        }
-    });
+        });
+    } catch (err) {
+        console.error("Erro ao carregar histórico:", err);
+    }
+}
+
+// Função auxiliar para cores (opcional)
+function getRandomColor() {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
+    return color;
 }
 
 // primeira carga
