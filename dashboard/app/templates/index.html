@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard IoT</title>
+    <link rel="icon" href="{{ url_for('static', path='conan_2.webp') }}" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
@@ -106,16 +107,34 @@
             background-color: transparent;
         }
 
-        td:nth-child(n+3) {
-            color: #0FC592;
-        }
-
         tr{
             border-bottom: 1px solid #818181;
         }
 
         tbody tr:hover {
             background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Cores para os valores de tensão */
+        .text-normal {
+            color: #0FC592;
+            font-weight: bold;
+        }
+
+        .text-critical {
+            color: #ff4d4d;
+            font-weight: bold;
+        }
+
+        /* Classe para esmaecer a linha */
+        .faded-row td{
+            opacity: 0.3; /* Nível de transparência (0.1 a 1.0) */
+            transition: opacity 0.5s ease; /* Suaviza a transição quando o dado mudar */
+        }
+
+        /* Garante que o hover não "anule" o esmaecimento de forma brusca */
+        .faded-row:hover {
+            opacity: 0.5;
         }
 
         /* Estilos do Modal */
@@ -200,7 +219,7 @@
 <nav id="container-mynavbar">
     <div id="user_acount">
         <div id="crop_container">
-            <img src="{{ url_for('static', path='conan_logo.jpg') }}" class="user-acount-avatar" alt="Avatar">
+            <img src="{{ url_for('static', path='conan_2.webp') }}" class="user-acount-avatar" alt="Avatar">
         </div>
 
         <div id="user_acount_infos">
@@ -295,13 +314,31 @@ async function loadData() {
                 grupo.forEach((d) => {
                     const dataFormatada = new Date(d.timestamp * 1000).toLocaleString("pt-BR");
                     const row = document.createElement("tr");
+
+                    // --- CONFIGURAÇÃO DE LIMITES ---
+                    const tensao = parseFloat(d.Tensao);
+                    const limiteCritico = 15.0; // Abaixo disso fica Vermelho
+                    const limiteFading = 16.0;  // Abaixo disso a linha esmaece
+                    
+                    let classeCor = "";
+                    
+                    if (!isNaN(tensao)) {
+                        // Define a cor do texto
+                        classeCor = tensao < limiteCritico ? "text-critical" : "text-normal";
+                        
+                        // Define se a linha esmaece (valor muito baixo ou crítico)
+                        if (tensao < limiteFading) {
+                            row.classList.add("faded-row");
+                        }
+                    }
+                    // ------------------------------
                     
                     // Estilo para indicar que a linha é clicável
-                    row.style.cursor = "crosshair"; 
+                    row.style.cursor = "cell"; 
 
                     row.innerHTML = `
                         <td>${d.I}</td>
-                        <td>${d.Tensao ?? "—"}</td>
+                        <td class="${classeCor}">${d.Tensao ?? "—"}</td>
                         <td>${d.Temp ?? "—"}</td>
                         <td>${d.Umi ?? "—"}</td>
                         <td>${dataFormatada}</td>
