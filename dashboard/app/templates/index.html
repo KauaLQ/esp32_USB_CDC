@@ -114,6 +114,10 @@
             border-bottom: 1px solid #818181;
         }
 
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
         /* Estilos do Modal */
         .modal-overlay {
             position: fixed;
@@ -213,13 +217,22 @@
     <div id="tables"></div>
 
     <div id="chartModal" class="modal-overlay">
-    <div class="modal-content">
-        <span class="modal-title">Gráfico de Tensões ao longo do tempo</span>
-        <span class="modal-subtitle">Clique nos canais abaixo para mostrar/ocultar</span>
-        <span class="close-button">&times;</span>
-        <canvas id="chartCanvas"></canvas>
+        <div class="modal-content">
+            <span class="modal-title">Gráfico de Tensões ao longo do tempo</span>
+            <span class="modal-subtitle">Clique nos canais abaixo para mostrar/ocultar</span>
+            <span class="close-button">&times;</span>
+            <canvas id="chartCanvas"></canvas>
+        </div>
     </div>
-</div>
+
+    <div id="channelModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-title" id="channelModalTitle">Histórico do Canal</span>
+            <span class="modal-subtitle">Monitoramento de Tensão, Temperatura e Umidade</span>
+            <span class="close-button">&times;</span>
+            <canvas id="channelCanvas"></canvas>
+        </div>
+    </div>
 </main>
 
 <script>
@@ -280,11 +293,12 @@ async function loadData() {
 
                 // adiciona os canais existentes
                 grupo.forEach((d) => {
-
-                    const dataFormatada = new Date(d.timestamp * 1000)
-                        .toLocaleString("pt-BR");
-
+                    const dataFormatada = new Date(d.timestamp * 1000).toLocaleString("pt-BR");
                     const row = document.createElement("tr");
+                    
+                    // Estilo para indicar que a linha é clicável
+                    row.style.cursor = "crosshair"; 
+
                     row.innerHTML = `
                         <td>${d.I}</td>
                         <td>${d.Tensao ?? "—"}</td>
@@ -292,6 +306,13 @@ async function loadData() {
                         <td>${d.Umi ?? "—"}</td>
                         <td>${dataFormatada}</td>
                     `;
+
+                    // EVENTO DE CLIQUE NA LINHA
+                    row.addEventListener("click", (e) => {
+                        e.stopPropagation(); // IMPEDE de abrir o modal do card (pai)
+                        abrirGraficoCanal(device.ID, d.I);
+                    });
+
                     tbody.appendChild(row);
                 });
 
@@ -327,21 +348,95 @@ const canvas = document.getElementById("chartCanvas");
 const ctx = canvas.getContext("2d");
 let chartInstance = null;
 
-// Lógica para fechar o modal ao clicar fora ou no X
-modal.addEventListener("click", (e) => {
-    if (e.target === modal || e.target.classList.contains('close-button')) {
-        // modal.style.display = "none"; <-- Remova essa linha
-        modal.classList.remove("active"); // Adicione essa
+const channelModal = document.getElementById("channelModal");
+const channelCanvas = document.getElementById("channelCanvas");
+let channelChartInstance = null;
+
+// Lógica para fechar qualquer modal ao clicar fora
+window.addEventListener("click", (e) => {
+    if (e.target.classList.contains('modal-overlay') || e.target.classList.contains('close-button')) {
+        const modalToClose = e.target.closest('.modal-overlay') || e.target;
+        modalToClose.classList.remove("active");
         
-        if (chartInstance) {
-            // Pequeno delay para destruir o gráfico após a animação de saída terminar
-            setTimeout(() => {
-                chartInstance.destroy();
-                chartInstance = null;
-            }, 400); 
-        }
+        // Destruir instâncias após a animação
+        setTimeout(() => {
+            if (modalToClose.id === "chartModal" && chartInstance) {
+                chartInstance.destroy(); chartInstance = null;
+            }
+            if (modalToClose.id === "channelModal" && channelChartInstance) {
+                channelChartInstance.destroy(); channelChartInstance = null;
+            }
+        }, 400);
     }
 });
+
+async function abrirGraficoCanal(deviceId, channelIndex) {
+    try {
+        const response = await fetch(`/api/history/channel/${deviceId}/${channelIndex}`);
+        const data = await response.json();
+
+        document.getElementById("channelModalTitle").textContent = `DESCESP ${deviceId} - Canal ${String(channelIndex).padStart(2, "0")}`;
+        channelModal.classList.add("active");
+
+        if (channelChartInstance) channelChartInstance.destroy();
+
+        channelChartInstance = new Chart(channelCanvas.getContext("2d"), {
+            type: "line",
+            data: {
+                labels: data.timestamps.map(t => new Date(t * 1000).toLocaleTimeString("pt-BR")),
+                datasets: [
+                    {
+                        label: "Tensão (V)",
+                        data: data.tensao,
+                        borderColor: "#4f46e5",
+                        backgroundColor: "#4f46e5",
+                        yAxisID: 'y',
+                    },
+                    {
+                        label: "Temp (°C)",
+                        data: data.temp,
+                        borderColor: "#ff9f43",
+                        backgroundColor: "#ff9f43",
+                        yAxisID: 'y1',
+                    },
+                    {
+                        label: "Umi (%)",
+                        data: data.umi,
+                        borderColor: "#0fc592",
+                        backgroundColor: "#0fc592",
+                        yAxisID: 'y2',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#fff' } } },
+                scales: {
+                    y: { // Tensão
+                        type: 'linear', display: true, position: 'left',
+                        ticks: { color: '#4f46e5' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y1: { // Temperatura
+                        type: 'linear', display: true, position: 'right',
+                        ticks: { color: '#ff9f43' },
+                        grid: { drawOnChartArea: false } // evita bagunça de linhas
+                    },
+                    y2: { // Umidade
+                        type: 'linear', display: true, position: 'right',
+                        offset: true,
+                        ticks: { color: '#0fc592' },
+                        grid: { drawOnChartArea: false }
+                    },
+                    x: { ticks: { color: '#fff' } }
+                }
+            }
+        });
+    } catch (err) {
+        console.error("Erro ao carregar canal:", err);
+    }
+}
 
 async function abrirGrafico(deviceId, inicio, fim) {
     try {
