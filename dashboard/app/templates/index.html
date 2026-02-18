@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Dashboard IoT</title>
     <link rel="icon" href="{{ url_for('static', path='conan_2.webp') }}" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
@@ -19,13 +20,29 @@
             margin-bottom: 30px;
         }
 
-        #container-mynavbar{
-            background: linear-gradient(90deg, #172236, #1B263A);
+        #container-mynavbar {
+            /* Fixa o elemento no topo */
+            position: sticky;
+            top: 0;
+            z-index: 1000; /* Garante que fique acima dos outros elementos */
+            /* Efeito Translúcido */
+            background: rgba(23, 34, 54, 0.8); /* Cor escura com 80% de opacidade */
+            backdrop-filter: blur(10px);        /* O segredo do efeito embaçado */
+            -webkit-backdrop-filter: blur(10px); /* Suporte para Safari */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(50, 66, 95, 0.5);
+        }
+
+        #user_content {
+            width: 100%;
+            max-width: 1200px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 10px 20px;
-            border-bottom: 1px solid #32425f;
+            box-sizing: border-box; /* Garante que o padding não "estoure" a largura */
         }
 
         #user_acount {
@@ -56,6 +73,30 @@
             display: flex;
             flex-direction: column;
             font-size: larger;
+        }
+
+        #user_buttons {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        #user_buttons .mybutton {
+            background-color: #263449;
+            border: none;
+            border-radius: 10px;
+            color: #bfc4cc;
+            padding: 10px;
+            font-size: small;
+        }
+
+        #user_msg_description {
+            font-size: small;
+        }
+
+        #user_msg_description .user-msg-one {
+            color: #bfc4cc;
         }
 
         #container-main {
@@ -90,7 +131,7 @@
             margin-bottom: 15px;
             font-weight: bold;
         }
-
+        
         table {
             width: 100%;
             border-collapse: collapse;
@@ -217,17 +258,25 @@
 <body>
 
 <nav id="container-mynavbar">
-    <div id="user_acount">
-        <div id="crop_container">
-            <img src="{{ url_for('static', path='conan_2.webp') }}" class="user-acount-avatar" alt="Avatar">
-        </div>
+    <div id="user_content">
+        <div id="user_acount">
+            <div id="crop_container">
+                <img src="{{ url_for('static', path='conan_2.webp') }}" class="user-acount-avatar" alt="Avatar">
+            </div>
 
-        <div id="user_acount_infos">
-            <span className="item-acount-description">
-                <b>Monitor de Baterias</b>
-            </span>
+            <div id="user_acount_infos">
+                <span className="item-acount-description">
+                    <b>Monitor de Baterias</b>
+                </span>
+            </div>
+        </div>
+        <div id="user_buttons">
+            <button class="mybutton"><i class="fa-solid fa-gear"></i>  Config</button>
+            <p id="user_msg_description"><span class="user-msg-one">Olá, </span><span class="user-msg-two"><b>Administrador</b></span></p>
+            <button class="mybutton"><i class="fa-solid fa-arrow-right-from-bracket"></i>  Sair</button>
         </div>
     </div>
+    
 </nav>
 
 <main id="container-main">
