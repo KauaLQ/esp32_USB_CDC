@@ -17,7 +17,19 @@
         }
 
         h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
             margin-bottom: 30px;
+            letter-spacing: -1px;
+            /* Efeito de degradê no texto */
+            background: linear-gradient(90deg, #4f46e5 0%, #ffffff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            /* Sombra suave para dar profundidade */
+            text-shadow: 0px 10px 20px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         #container-mynavbar {
@@ -280,7 +292,7 @@
 </nav>
 
 <main id="container-main">
-    <h1>Conan IoT Dashboard's</h1>
+    <h1>Conan IoT Dashboard</h1>
 
     <div id="tables"></div>
 
