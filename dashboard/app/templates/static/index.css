@@ -1,0 +1,257 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(90deg, #0F182C, #1C283C);
+    color: #fff;
+}
+
+h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 30px;
+    letter-spacing: -1px;
+    /* Efeito de degradê no texto */
+    background: linear-gradient(90deg, #4f46e5 0%, #ffffff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    /* Sombra suave para dar profundidade */
+    text-shadow: 0px 10px 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#container-mynavbar {
+    /* Fixa o elemento no topo */
+    position: sticky;
+    top: 0;
+    z-index: 1000; /* Garante que fique acima dos outros elementos */
+    /* Efeito Translúcido */
+    background: rgba(23, 34, 54, 0.8); /* Cor escura com 80% de opacidade */
+    backdrop-filter: blur(10px);        /* O segredo do efeito embaçado */
+    -webkit-backdrop-filter: blur(10px); /* Suporte para Safari */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid rgba(50, 66, 95, 0.5);
+}
+
+#user_content {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box; /* Garante que o padding não "estoure" a largura */
+}
+
+#user_acount {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    gap: 8px;
+}
+
+#crop_container {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid #4f46e5;
+    overflow: hidden; /* Isso impede que a imagem "saia" do quadrado */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#crop_container .user-acount-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#user_acount_infos {
+    display: flex;
+    flex-direction: column;
+    font-size: larger;
+}
+
+#user_buttons {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+#user_buttons .mybutton {
+    background-color: #263449;
+    border: none;
+    border-radius: 10px;
+    color: #bfc4cc;
+    padding: 10px;
+    font-size: small;
+}
+
+#user_msg_description {
+    font-size: small;
+}
+
+#user_msg_description .user-msg-one {
+    color: #bfc4cc;
+}
+
+#container-main {
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: baseline;
+}
+
+.card {
+    max-width: 600px;
+    background: linear-gradient(90deg, #172236, #1B263A);
+    border: 1px solid #32425f;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 40px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease; 
+}
+
+.card:hover {
+    transform: translateY(-5px) scale(1.02); /* Leve subida e zoom */
+    box-shadow: 0 12px 25px rgba(0,0,0,0.5);
+}
+
+.card:active {
+    transform: scale(0.98);
+}
+
+.card-title {
+    font-size: 18px;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: transparent;
+}
+
+th, td {
+    font-size: small;
+    padding: 15px;
+    text-align: center;
+}
+
+th {
+    background-color: transparent;
+}
+
+tr{
+    border-bottom: 1px solid #818181;
+}
+
+tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Cores para os valores de tensão */
+.text-normal {
+    color: #0FC592;
+    font-weight: bold;
+}
+
+.text-critical {
+    color: #ff4d4d;
+    font-weight: bold;
+}
+
+/* Classe para esmaecer a linha */
+.faded-row td{
+    opacity: 0.3; /* Nível de transparência (0.1 a 1.0) */
+    transition: opacity 0.5s ease; /* Suaviza a transição quando o dado mudar */
+}
+
+/* Garante que o hover não "anule" o esmaecimento de forma brusca */
+.faded-row:hover {
+    opacity: 0.5;
+}
+
+/* Estilos do Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: linear-gradient(90deg, #172236, #1B263A);
+    border: 1px solid #818181;
+    border-radius: 12px;
+    padding: 50px;
+    position: relative;
+    width: 90%;            /* Ocupa 90% da tela em dispositivos menores */
+    max-width: 800px;     /* Não passa de 1000px em telas grandes */
+    height: 400px;         /* Altura fixa para o gráfico respirar */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0.8);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Quando o pai (overlay) estiver ativo, o conteúdo volta ao tamanho normal */
+.modal-overlay.active .modal-content {
+    transform: scale(1);
+}
+
+.modal-title{
+    align-self: baseline;
+    justify-self: flex-start;
+}
+
+.modal-subtitle {
+    font-size: 12px;
+    color: #8e96a5;
+    margin: 10px 0px 10px 0px;
+    align-self: baseline;
+    justify-self: flex-start;
+}
+
+#chartCanvas {
+    width: 100% !important;  /* Força ocupar toda a largura do modal-content */
+    height: 100% !important; /* Força ocupar toda a altura do modal-content */
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    cursor: pointer;
+    color: red;
+}
+
+.close-button:hover {
+    transition: color 0.2s;
+    color: darkred;
+}

@@ -42,11 +42,11 @@ def inject_snapshot(qtd_devices):
 
 if __name__ == "__main__":
 
-    # print("=== Injetor de Snapshot IoT ===")
+    print("=== Injetor de Snapshot IoT ===")
 
-    # qtd = int(input("Quantos devices deseja gerar neste snapshot? "))
-    # inject_snapshot(qtd)
-    while True:
-        print("gerando novos dados...")
-        inject_snapshot(1)
-        time.sleep(5)
+    qtd = int(input("Quantos devices deseja gerar neste snapshot? "))
+    inject_snapshot(qtd)
+    # while True:
+    #     print("gerando novos dados...")
+    #     inject_snapshot(1)
+    #     time.sleep(5)
