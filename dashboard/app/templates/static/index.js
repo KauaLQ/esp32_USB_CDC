@@ -191,7 +191,28 @@ async function abrirGraficoCanal(deviceId, channelIndex) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#fff' } } },
+                interaction: {
+                    mode: 'index',     // mostra todos os datasets no mesmo índice (timestamp)
+                    intersect: false,   // não precisa estar exatamente sobre o ponto
+                    axis: 'x'
+                },
+                plugins: {
+                    legend: { 
+                        position: "top",
+                        labels: { color: '#fff' }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        mode: 'index',    // Mostra todos os datasets do índice
+                        intersect: false, // Fundamental para não precisar "mirar" no ponto
+                        position: 'nearest', // Opcional: melhora a posição da caixa de texto
+                        backgroundColor: 'rgba(15, 24, 44, 0.9)', // Fundo do tooltip combinando com seu tema
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: '#32425f',
+                        borderWidth: 1
+                    }
+                },
                 scales: {
                     y: { // Tensão
                         type: 'linear', display: true, position: 'left',
@@ -229,13 +250,19 @@ async function abrirGrafico(deviceId, inicio, fim) {
         // Se já houver um gráfico, destrói antes de criar o novo
         if (chartInstance) chartInstance.destroy();
 
-        const datasets = Object.keys(data.canais).map(canal => ({
-            label: "Canal " + canal,
-            data: data.canais[canal],
-            borderWidth: 2,
-            fill: false,
-            borderColor: getRandomColor() // Opcional: função para cores diferentes
-        }));
+        const datasets = Object.keys(data.canais).map(canal => {
+            // Pega a cor fixa; se o canal não estiver no objeto, usa um cinza padrão
+            const corFixa = coresCanais[canal] || "#94a3b8";
+            return {
+                label: "Canal " + canal,
+                data: data.canais[canal],
+                borderWidth: 2,
+                fill: false,
+                borderColor: corFixa,
+                backgroundColor: corFixa, // Importante para a bolinha da legenda
+                tension: 0.1 // Deixa a linha levemente suavizada
+            };
+        });
 
         chartInstance = new Chart(ctx, {
             type: "line",
@@ -248,15 +275,40 @@ async function abrirGrafico(deviceId, inicio, fim) {
             options: {
                 responsive: true, // Mudei para true para melhor ajuste
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',     // mostra todos os datasets no mesmo índice (timestamp)
+                    intersect: false,   // não precisa estar exatamente sobre o ponto
+                    axis: 'x'
+                },
                 plugins: {
-                    legend: { position: "top", labels: { color: '#fff' } }
+                    legend: { 
+                        position: "top",
+                        labels: { color: '#fff' }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        mode: 'index',    // Mostra todos os datasets do índice
+                        intersect: false, // Fundamental para não precisar "mirar" no ponto
+                        position: 'nearest', // Opcional: melhora a posição da caixa de texto
+                        backgroundColor: 'rgba(15, 24, 44, 0.9)', // Fundo do tooltip combinando com seu tema
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: '#32425f',
+                        borderWidth: 1,
+                        callbacks: {
+                            // Opcional: formatação para garantir que a unidade apareça no tooltip
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y} V`;
+                            }
+                        }
+                    }
                 },
                 scales: {
                     y: {
                         ticks: { color: '#fff' },
                         title: { display: true, text: "Tensão (V)", color: '#fff' }
                     },
-                    x: { ticks: { color: '#fff' } }
+                    x: {ticks: { color: '#fff' }}
                 }
             }
         });
@@ -265,13 +317,21 @@ async function abrirGrafico(deviceId, inicio, fim) {
     }
 }
 
-// Função auxiliar para cores (opcional)
-function getRandomColor() {
-    const letters = '0123456789ABCDEF';
-    let color = '#';
-    for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
-    return color;
-}
+// Objeto de cores fixas
+const coresCanais = {
+    "1": "#4f46e5", // Indigo
+    "2": "#0fc592", // Verde
+    "3": "#f59e0b", // Amarelo/Laranja
+    "4": "#ec4899", // Rosa
+    "5": "#4c3f69", // Roxo
+    "6": "#06b6d4", // Ciano
+    "7": "#ef4444", // Vermelho
+    "8": "#10b981", // Esmeralda
+    "9": "#f97316", // Laranja Forte
+    "10": "#3b82f6", // Azul
+    "11": "#f1dc63", // Violeta
+    "12": "#a855f7"  // Púrpura
+};
 
 // primeira carga
 loadData();
